@@ -1,0 +1,202 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserType {
+  FOUNDER
+  STAFF  
+  PLAYER
+  DEVELOPER
+}
+
+enum ReasonTowing {
+  ILLEGAL_PARKING         // Estacionamento irregular
+  TRAFFIC_VIOLATION       // Infração de trânsito
+  ABANDONED_VEHICLE       // Veículo abandonado
+  UNPAID_FINES            // Multas não pagas
+  VEHICLE_SEIZURE         // Apreensão do veículo
+  LACK_OF_DOCUMENTATION   // Falta de documentação adequada
+  BLOCKING_TRAFFIC        // Bloqueio do tráfego
+  DRIVER_SUPPORT // Suporte ao motorista
+}
+
+enum TrafficViolation {
+
+  // Infrações por excesso de velocidade
+  SPEEDING // Excesso de velocidade
+  STREET_RACING // Racha ou corrida ilegal
+
+  // Infrações relacionadas a semáforo e sinalização
+  RUNNING_RED_LIGHT // Avançar o sinal vermelho
+  FAILURE_TO_OBEY_SIGNS // Não respeitar a sinalização de trânsito
+  FAILURE_TO_YIELD_PEDESTRIANS // Não dar preferência ao pedestre
+
+  // Infrações relacionadas a documentação e veículo
+  DRIVING_WITHOUT_LICENSE // Dirigir sem habilitação
+  EXPIRED_VEHICLE_REGISTRATION // Licenciamento vencido
+  DRIVING_WITHOUT_PLATES // Conduzir veículo sem placas
+
+  // Infrações por direção perigosa
+  DUI_DWI // Dirigir sob efeito de álcool ou drogas
+  TEXTING_WHILE_DRIVING // Uso do celular ao volante
+  RECKLESS_DRIVING // Dirigir de forma agressiva
+
+  // Infrações de estacionamento
+  ILLEGAL_PARKING // Estacionar em local proibido
+  PARKING_DISABLED_SPOT // Estacionar em vaga para deficientes sem autorização
+  PARKING_FIRE_HYDRANT // Estacionar em frente a um hidrante
+
+
+}
+
+
+
+enum OperatingCategory {
+  CARGA
+  PASSAGEIRO
+  ESPECIAL
+}
+
+enum FuelType {
+  DIESEL
+  GASOLINA
+  FLEX
+  ELETRICO
+}
+
+model User {
+  id         String     @id @default(uuid())
+  nickname   String @map("nickname")
+  nameServer   String @map("name_server")
+  email      String     @unique
+  userType UserType @map("user_type")
+  people Person[]
+
+  createdAt  DateTime   @default(now()) @map("created_at")
+  updatedAt  DateTime   @updatedAt @map("updated_at")
+@@map("user")
+}
+
+model Person {
+  id         String     @id @default(uuid())  
+  createdAt  DateTime   @default(now()) @map("created_at")
+  updatedAt  DateTime   @updatedAt @map("updated_at")
+  // Relacionamento 1-1 com NaturalPerson
+  naturalPerson NaturalPerson? 
+  user          User? @relation(fields: [userID], references: [id])
+  userID        String? @map("user_id")
+
+  registeredVehicle Vehicle []
+  @@map("person")
+
+}
+
+model NaturalPerson {
+  id         String     @id @default(uuid())
+  name       String 
+  CPF        String     @unique @map("cpf")// CPF é string (ex: "123.456.789-00")
+
+  birth      DateTime  @map("birth")
+  // Relacionamento com Person
+  person     Person     @relation(fields: [personId], references: [id])
+  personId   String     @unique @map("person_id")
+
+  yardRegistration VehicleYardRegistration []
+  trafficTickets TrafficTickets []
+  @@map("natural_person")
+}
+
+model Vehicle {
+  id                String     @id @default(uuid())
+  plate             String?    @map("plate")// Placa do veículo registrada no órgão de trânsito
+  serialNumber      String?   @map("serial_number") // Número de série do veículo na frota
+  operatingCategory OperatingCategory  @map("operating_category") // Categoria de operação do veículo na frota
+
+  // Relacionamento com o operador (empresa dona da frota)
+  owner          Person?  @relation(fields: [ownerID], references: [id])
+  ownerID        String?   @map("owner_id")   // ID do operador
+
+  bodywork          Bodywork?  @relation(fields: [bodyworkID], references: [id])
+  bodyworkID        String?   @map("bodywork_id")  // Referência à carroceria
+
+  registrationVehicleYard VehicleYardRegistration[]
+  trafficTickets TrafficTickets []
+ @@map("vehicle")
+}
+
+
+model VehicleYardRegistration { // REGISTRO DO Pátio de veículos
+  id                String     @id @default(uuid())
+  description        String @map("description")
+  reasonTowing ReasonTowing @map("type_motivation") 
+  requestAuthority Boolean @map("request_authority") @default(false)
+
+  // Permanencia em pátio
+  confiscatedVehicle Boolean @map("confiscated_vehicle") @default(true)
+  releaseDate DateTime @default(dbgenerated("(NOW() + INTERVAL '1 day')")) @map("release_date")
+
+  // Veiculo guinchado/aprendido ou retido
+  vehicle          Vehicle?  @relation(fields: [vehicleID], references: [id])
+  vehicleID        String?   @map("vehicle_Id")  // ID do veiculo
+
+  // Autoridade Registrante
+  authorRecord          NaturalPerson?  @relation(fields: [authorRecordID], references: [id])
+  authorRecordID        String?   @map("author_record_Id")   // ID da altoridade
+
+  createdAt  DateTime   @default(now()) @map("created_at")
+  updatedAt  DateTime   @updatedAt @map("updated_at")
+
+  @@map("vehicle_yard_registration")
+}
+
+model TrafficTickets { // REGISTRO DO Pátio de veículos
+  id                String     @id @default(uuid())
+  trafficViolation TrafficViolation @map("traffic_violation") 
+  descriptionSituation       String @map("description_situation") 
+  coast Float @map("coast") @default(0.00)  
+  paymentPending Boolean @map("payment_pending")  @default(true)  
+
+  // Veiculo multado
+  vehicle          Vehicle?  @relation(fields: [vehicleID], references: [id])
+  vehicleID        String?   @map("vehicle_Id")   // ID do Veiculo
+
+  // Autoridade Registrante
+  authorRecord          NaturalPerson?  @relation(fields: [authorRecordID], references: [id])
+  authorRecordID        String?   @map("author_record_Id") // ID da altoridade 
+
+  createdAt  DateTime   @default(now()) @map("created_at")
+  updatedAt  DateTime   @updatedAt @map("updated_at")
+
+  @@map("traffic_tickets")
+}
+
+
+
+model Bodywork {
+  id        String     @id @default(uuid())
+  nameModel       String @map("name_model")
+  description      String?
+  serialNumber String? @map("serial_number")
+  year Float
+  registeredVehicles Vehicle[]
+  manufacturer    Manufacturer?     @relation(fields: [manufacturerID], references: [id])
+  manufacturerID  String? @map("manufacturer_id")
+  @@map("bodywork")
+}
+
+model Manufacturer {
+  id        String     @id @default(uuid())
+  name      String
+  bodyworks Bodywork[]
+
+@@map("manufacturer")
+}
+
+
+
+
