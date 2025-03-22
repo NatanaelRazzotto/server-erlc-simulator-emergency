@@ -83,32 +83,27 @@ model User {
 }
 
 model Person {
-  id         String     @id @default(uuid())  
-  createdAt  DateTime   @default(now()) @map("created_at")
-  updatedAt  DateTime   @updatedAt @map("updated_at")
-  // Relacionamento 1-1 com NaturalPerson
-  naturalPerson NaturalPerson? 
-  user          User? @relation(fields: [userID], references: [id])
-  userID        String? @map("user_id")
-
-  registeredVehicle Vehicle []
+  id                String              @id @default(uuid())  
+  createdAt         DateTime            @default(now()) @map("created_at")
+  updatedAt         DateTime            @updatedAt @map("updated_at")
+  naturalPerson     NaturalPerson?      // Relacionamento 1-1 opcional
+  user              User?               @relation(fields: [userID], references: [id])
+  userID            String?             @map("user_id")
+  registeredVehicle Vehicle[]           // Relacionamento 1-N com Vehicle
   @@map("person")
-
 }
 
 model NaturalPerson {
-  id         String     @id @default(uuid())
-  name       String 
-  CPF        String     @unique @map("cpf")// CPF é string (ex: "123.456.789-00")
-
-  birth      DateTime  @map("birth")
-  // Relacionamento com Person
-  person     Person     @relation(fields: [personId], references: [id])
-  personId   String     @unique @map("person_id")
-
-  yardRegistration VehicleYardRegistration []
-  trafficTickets TrafficTickets []
+  id                  String           @id @default(uuid())
+  name                String 
+  CPF                 String           @unique @map("cpf") // CPF como string (ex: "123.456.789-00")
+  birth               DateTime         @map("birth")
+  person              Person           @relation(fields: [personId], references: [id]) // Obrigatório
+  personId            String           @unique @map("person_id") // Unique para 1-1
+  yardRegistration    VehicleYardRegistration[] 
+  trafficTickets      TrafficTickets[]  // Nome do model corrigido (singular)
   @@map("natural_person")
+  @@index([CPF]) // Índice para otimizar buscas por CPF
 }
 
 model Vehicle {
